@@ -136,10 +136,14 @@
 
 	function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
+	// Bluefy/iOS doi UUID 128-bit day du (khong hieu so rut gon 0xff00) -> dung chuoi.
+	var SVC_UUID = '0000ff00-0000-1000-8000-00805f9b34fb';   // service 0xFF00
+	var CHR_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';   // char giờ 0xFF01
+
 	// Lấy service 0xff00: thử getPrimaryService, nếu rỗng thì liệt kê hết rồi tìm tay
 	async function findService(server){
 		try{
-			return await server.getPrimaryService( 0xff00 );
+			return await server.getPrimaryService( SVC_UUID );
 		}catch(e){
 			log('  getPrimaryService(0xff00) lỗi (' + (e.message||e) + ') → thử liệt kê tất cả…');
 			var all = await server.getPrimaryServices();
@@ -163,7 +167,7 @@
 				await sleep(400);                  // chờ stack BLE Windows ổn định
 				var service = await findService(server);
 				log('Đã mở service 0xFF00');
-				var lv = await service.getCharacteristic( 0xff01 );
+				var lv = await service.getCharacteristic( CHR_UUID );
 				log('Đã lấy đặc tính giờ (0xFF01)');
 				return { server: server, service: service, longValue: lv };
 			}catch(e){
@@ -179,7 +183,7 @@
 	async function connectToDevice(){
 		try{
 			setStatus('Đang tìm thiết bị…', 'warn');
-			log('Yêu cầu thiết bị Bluetooth… [web v4]');
+			log('Yêu cầu thiết bị Bluetooth… [web v5]');
 			log('UA: ' + navigator.userAgent);
 			// iOS/Bluefy khong ho tro loc namePrefix -> requestDevice loi ngay ("loi 2").
 			// -> Tren iOS/Bluefy dung acceptAllDevices (hien tat ca, tu chon DLG-CLOCK);
@@ -190,9 +194,9 @@
 			try {
 				if (isIOS || isBluefy) {
 					log('iOS/Bluefy -> hien TAT CA thiet bi, hay chon DLG-CLOCK-xxxxxx');
-					device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [ 0xff00 ] });
+					device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [ SVC_UUID ] });
 				} else {
-					device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DLG-CLOCK' }], optionalServices: [ 0xff00 ] });
+					device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DLG-CLOCK' }], optionalServices: [ SVC_UUID ] });
 				}
 			} catch (eReq) {
 				log('requestDevice LOI ten=[' + (eReq && eReq.name) + '] code=[' + (eReq && eReq.code) + '] msg=[' + ((eReq && eReq.message) || '') + '] raw=' + String(eReq));
