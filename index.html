@@ -179,7 +179,7 @@
 	async function connectToDevice(){
 		try{
 			setStatus('Đang tìm thiết bị…', 'warn');
-			log('Yêu cầu thiết bị Bluetooth… [web v3]');
+			log('Yêu cầu thiết bị Bluetooth… [web v4]');
 			log('UA: ' + navigator.userAgent);
 			// iOS/Bluefy khong ho tro loc namePrefix -> requestDevice loi ngay ("loi 2").
 			// -> Tren iOS/Bluefy dung acceptAllDevices (hien tat ca, tu chon DLG-CLOCK);
@@ -195,10 +195,8 @@
 					device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DLG-CLOCK' }], optionalServices: [ 0xff00 ] });
 				}
 			} catch (eReq) {
-				log('requestDevice loi [' + (eReq && eReq.name) + ']: ' + ((eReq && eReq.message) || eReq));
-				// Fallback cuoi cung: thu acceptAllDevices (phong khi loc theo ten khong duoc)
-				log('Thu lai voi acceptAllDevices…');
-				device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [ 0xff00 ] });
+				log('requestDevice LOI ten=[' + (eReq && eReq.name) + '] code=[' + (eReq && eReq.code) + '] msg=[' + ((eReq && eReq.message) || '') + '] raw=' + String(eReq));
+				throw eReq;
 			}
 			document.getElementById('device_name').textContent = device.name;
 			document.getElementById('info-card').style.display = 'block';
@@ -469,6 +467,11 @@
 
 	if(!navigator.bluetooth){
 		setStatus('Trình duyệt không hỗ trợ Web Bluetooth — dùng Chrome hoặc Edge', 'err');
+	} else if(navigator.bluetooth.getAvailability){
+		// Kiem tra radio Bluetooth co san khong (chan doan iOS/Bluefy)
+		navigator.bluetooth.getAvailability().then(function(a){
+			log('Bluetooth radio kha dung: ' + a);
+		}).catch(function(e){ log('getAvailability loi: ' + ((e&&e.message)||e)); });
 	}
 </script>
 </body>
