@@ -180,10 +180,20 @@
 		try{
 			setStatus('Đang tìm thiết bị…', 'warn');
 			log('Yêu cầu thiết bị Bluetooth…');
-			device = await navigator.bluetooth.requestDevice({
-				filters: [{ namePrefix: 'DLG-CLOCK' }],
-				optionalServices: [ 0xff00 ]
-			});
+			// iOS/Bluefy khong ho tro loc namePrefix -> requestDevice loi ngay ("loi 2").
+			// -> Tren iOS/Bluefy dung acceptAllDevices (hien tat ca, tu chon DLG-CLOCK);
+			//    Chrome/Android/Edge van loc theo ten cho gon.
+			var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+				|| (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+			var isBluefy = /Bluefy/i.test(navigator.userAgent);
+			var reqOpts;
+			if (isIOS || isBluefy) {
+				reqOpts = { acceptAllDevices: true, optionalServices: [ 0xff00 ] };
+				log('iOS/Bluefy: hien TAT CA thiet bi — hay chon DLG-CLOCK-xxxxxx');
+			} else {
+				reqOpts = { filters: [{ namePrefix: 'DLG-CLOCK' }], optionalServices: [ 0xff00 ] };
+			}
+			device = await navigator.bluetooth.requestDevice(reqOpts);
 			document.getElementById('device_name').textContent = device.name;
 			document.getElementById('info-card').style.display = 'block';
 			device.ongattserverdisconnected = onDisconnect;
