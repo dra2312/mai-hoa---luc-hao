@@ -238,11 +238,12 @@
 			connected = true;
 			var is213 = (deviceType === '213');
 			document.getElementById('setime-button').disabled = false;
-			// Hiệu chỉnh / Nâng cấp / Lập quẻ tay (0x93) hiện chỉ có ở màn 2.13
+			// Hiệu chỉnh / Nâng cấp: chỉ có ở màn 2.13
 			document.getElementById('upfirm-button').disabled = !is213;
 			document.getElementById('calibration-button').disabled = !is213;
-			document.getElementById('cast-button').disabled = !is213;
-			document.getElementById('backclock-button').disabled = !is213;
+			// Lập quẻ Lục Hào tay (0x93/0x94): CẢ 2.13 và 4.2
+			document.getElementById('cast-button').disabled = false;
+			document.getElementById('backclock-button').disabled = false;
 			document.getElementById('connect-button').textContent = '⛔ Ngắt kết nối';
 			document.getElementById('connect-button').className = 'b-ghost';
 			document.getElementById('device_name').textContent = device.name + (is213 ? '  (màn 2.13")' : '  (màn 4.2")');
@@ -496,7 +497,12 @@
 		try{
 			await longValue.writeValue(buf);
 			log('✅ Đã gửi quẻ Lục Hào (yao='+yaoBits.toString(2)+' dong='+dongBits.toString(2)+')');
-			setStatus('✅ Đã lập quẻ — xem kết quả trên màn e-ink','ok');
+			if (deviceType === '42') {
+				setStatus('✅ Đã lập quẻ! Ngắt kết nối để màn 4.2 vẽ (~15s)…','ok');
+				await sleep(700); disconnect();   // 4.2 render khi ngat ket noi
+			} else {
+				setStatus('✅ Đã lập quẻ — xem kết quả trên màn e-ink','ok');
+			}
 		}catch(e){ log('❌ Lỗi gửi quẻ: '+(e.message||e)); setStatus('Lỗi gửi quẻ','err'); }
 	}
 
@@ -506,7 +512,12 @@
 			var buf=new Uint8Array(1); buf[0]=0x94;
 			await longValue.writeValue(buf);
 			log('🕐 Về chế độ đồng hồ');
-			setStatus('🕐 Đã về đồng hồ (canh giờ)','ok');
+			if (deviceType === '42') {
+				setStatus('🕐 Về đồng hồ! Ngắt kết nối để màn 4.2 vẽ (~15s)…','ok');
+				await sleep(700); disconnect();
+			} else {
+				setStatus('🕐 Đã về đồng hồ (canh giờ)','ok');
+			}
 		}catch(e){ log('❌ Lỗi: '+(e.message||e)); }
 	}
 
