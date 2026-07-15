@@ -94,6 +94,20 @@
 		</div>
 	</details>
 
+	<details style="margin-bottom:14px">
+		<summary style="cursor:pointer;font-size:16px;font-weight:500;color:#cbd5e1">🔮 Lập quẻ Dịch theo thời gian (nhập mốc)</summary>
+		<div class="card" style="margin-top:10px">
+			<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Lập quẻ Dịch (Mai Hoa) cho <b>một mốc thời gian bất kỳ</b> (khác giờ hiện tại):</div>
+			<div style="display:flex;gap:10px;margin:8px 0;align-items:center;flex-wrap:wrap">
+				<span class="muted">Mốc thời gian:</span>
+				<input type="date" id="mh-date" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt)">
+				<input type="time" id="mh-time" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt)">
+			</div>
+			<button id="casttime-button" class="b-ok" disabled style="margin-top:8px">🔮 Lập quẻ theo giờ này</button>
+			<div class="muted" style="margin-top:8px">4.2: đồng hồ được <b>đóng băng</b> ở mốc này (bấm "Đồng bộ giờ" để về giờ thật). 2.13: sẽ đặt luôn đồng hồ theo mốc.</div>
+		</div>
+	</details>
+
 	<div class="grid2">
 		<button id="calibration-button" class="b-ghost" disabled>🎯 Hiệu chỉnh</button>
 		<button id="upfirm-button" class="b-ghost" disabled>⬆️ Nâng cấp</button>
@@ -241,9 +255,10 @@
 			// Hiệu chỉnh / Nâng cấp: chỉ có ở màn 2.13
 			document.getElementById('upfirm-button').disabled = !is213;
 			document.getElementById('calibration-button').disabled = !is213;
-			// Lập quẻ Lục Hào tay (0x93/0x94): CẢ 2.13 và 4.2
+			// Lập quẻ Lục Hào tay (0x93/0x94) + theo thời gian (0x95/0x91): CẢ 2.13 và 4.2
 			document.getElementById('cast-button').disabled = false;
 			document.getElementById('backclock-button').disabled = false;
+			document.getElementById('casttime-button').disabled = false;
 			document.getElementById('connect-button').textContent = '⛔ Ngắt kết nối';
 			document.getElementById('connect-button').className = 'b-ghost';
 			document.getElementById('device_name').textContent = device.name + (is213 ? '  (màn 2.13")' : '  (màn 4.2")');
@@ -452,6 +467,7 @@
 		document.getElementById('upfirm-button').disabled = true;
 		document.getElementById('cast-button').disabled = true;
 		document.getElementById('backclock-button').disabled = true;
+		document.getElementById('casttime-button').disabled = true;
 		document.getElementById('connect-button').textContent = '🔗 Kết nối thiết bị';
 		document.getElementById('connect-button').className = 'b-pri';
 		setStatus('Đã ngắt kết nối', '');
@@ -476,7 +492,49 @@
 		var n = new Date(), p = function(x){ return (x<10?'0':'')+x; };
 		document.getElementById('cast-date').value = n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
 		document.getElementById('cast-time').value = p(n.getHours())+':'+p(n.getMinutes());
+		document.getElementById('mh-date').value = n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
+		document.getElementById('mh-time').value = p(n.getHours())+':'+p(n.getMinutes());
 	})();
+
+	// ===== LAP QUE THEO THOI GIAN (Mai Hoa cho moc gio tuy chon) =====
+	async function onCastByTime(){
+		if(!longValue){ setStatus('Chưa kết nối thiết bị','warn'); return; }
+		var dstr=document.getElementById('mh-date').value, tstr=document.getElementById('mh-time').value;
+		if(!dstr || !tstr){ setStatus('Chưa chọn ngày/giờ lập quẻ','warn'); return; }
+		var dp=dstr.split('-'), tp=tstr.split(':');
+		var yy=parseInt(dp[0]), mo=parseInt(dp[1]), dd=parseInt(dp[2]), hh=parseInt(tp[0]), mi=parseInt(tp[1]);
+		var wday=new Date(yy, mo-1, dd).getDay();
+		try{
+			if (deviceType === '42') {
+				// 0x95: [0x95][yearLE(2)][mon0][day][hour][min][wday] - dong bang dong ho
+				var b=new Uint8Array(8);
+				b[0]=0x95;
+				b[1]=yy%256; b[2]=Math.floor(yy/256);
+				b[3]=mo-1; b[4]=dd; b[5]=hh; b[6]=mi; b[7]=wday;
+				await longValue.writeValue(b);
+				log('✅ Lập quẻ theo giờ (0x95): '+dstr+' '+tstr);
+				setStatus('✅ Đã gửi! Ngắt kết nối để màn 4.2 vẽ (~15s)…','ok');
+				await sleep(700); disconnect();
+			} else {
+				// 2.13: dung 0x91 voi gio tuy chon (se dat luon dong ho theo moc)
+				var ld=new Date(yy, mo-1, dd), l_year=2020, l_month=1, l_mday=1;
+				try{
+					var ls=ld.toLocaleDateString('zh-CN-u-ca-chinese',{month:'numeric',day:'numeric'});
+					var lmoff=0; if(ls.charAt(0)=='闰'){ lmoff=128; ls=ls.substr(1); }
+					var sp=ls.split('-'); l_month=lmoff+parseInt(sp[0]); l_mday=parseInt(sp[1]);
+					l_year=parseInt(ld.toLocaleDateString('zh-CN-u-ca-chinese',{year:'numeric'}).substr(0,4));
+				}catch(e){}
+				var b=new Uint8Array(12);
+				b[0]=0x91;
+				b[1]=yy%256; b[2]=Math.floor(yy/256);
+				b[3]=mo-1; b[4]=dd; b[5]=hh; b[6]=mi; b[7]=0; b[8]=wday;
+				b[9]=l_year-2020; b[10]=l_month-1; b[11]=l_mday;
+				await longValue.writeValue(b);
+				log('✅ Lập quẻ theo giờ (2.13, 0x91): '+dstr+' '+tstr);
+				setStatus('✅ Đã lập quẻ theo giờ (2.13 đặt đồng hồ theo mốc — Đồng bộ giờ để về giờ thật)','ok');
+			}
+		}catch(e){ log('❌ Lỗi lập quẻ theo giờ: '+(e.message||e)); setStatus('Lỗi lập quẻ theo giờ','err'); }
+	}
 
 	async function onCastManual(){
 		if(!longValue){ setStatus('Chưa kết nối thiết bị','warn'); return; }
@@ -527,6 +585,7 @@
 	document.getElementById('calibration-button').addEventListener('click', onCalibration);
 	document.getElementById('cast-button').addEventListener('click', onCastManual);
 	document.getElementById('backclock-button').addEventListener('click', onBackToClock);
+	document.getElementById('casttime-button').addEventListener('click', onCastByTime);
 
 	if(!navigator.bluetooth){
 		setStatus('Trình duyệt không hỗ trợ Web Bluetooth — dùng Chrome hoặc Edge', 'err');
