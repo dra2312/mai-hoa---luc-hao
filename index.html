@@ -100,11 +100,12 @@
 			<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Lập quẻ Dịch (Mai Hoa) cho <b>một mốc thời gian bất kỳ</b> (khác giờ hiện tại):</div>
 			<div style="display:flex;gap:10px;margin:8px 0;align-items:center;flex-wrap:wrap">
 				<span class="muted">Mốc thời gian:</span>
-				<input type="date" id="mh-date" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt)">
+				<input type="date" id="mh-date" min="2020-01-01" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt)">
 				<input type="time" id="mh-time" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt)">
 			</div>
 			<button id="casttime-button" class="b-ok" disabled style="margin-top:8px">🔮 Lập quẻ theo giờ này</button>
-			<div class="muted" style="margin-top:8px">4.2: đồng hồ được <b>đóng băng</b> ở mốc này (bấm "Đồng bộ giờ" để về giờ thật). 2.13: sẽ đặt luôn đồng hồ theo mốc.</div>
+			<div class="muted" style="margin-top:8px">⚠️ <b>Chỉ hỗ trợ mốc từ năm 2020 trở đi</b> (firmware coi năm &lt; 2020 là "chưa đồng bộ" → hiện màn chờ).</div>
+			<div class="muted" style="margin-top:4px">4.2: đồng hồ được <b>đóng băng</b> ở mốc này (bấm "Đồng bộ giờ" để về giờ thật). 2.13: sẽ đặt luôn đồng hồ theo mốc.</div>
 		</div>
 	</details>
 
@@ -503,6 +504,7 @@
 		if(!dstr || !tstr){ setStatus('Chưa chọn ngày/giờ lập quẻ','warn'); return; }
 		var dp=dstr.split('-'), tp=tstr.split(':');
 		var yy=parseInt(dp[0]), mo=parseInt(dp[1]), dd=parseInt(dp[2]), hh=parseInt(tp[0]), mi=parseInt(tp[1]);
+		if(yy < 2020){ setStatus('⚠️ Lập quẻ theo thời gian chỉ hỗ trợ mốc từ năm 2020 trở đi','warn'); log('⚠️ Bỏ qua: năm '+yy+' < 2020 (firmware sẽ hiện màn chờ)'); return; }
 		var wday=new Date(yy, mo-1, dd).getDay();
 		try{
 			if (deviceType === '42') {
