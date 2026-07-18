@@ -109,6 +109,23 @@
 		</div>
 	</details>
 
+	<details style="margin-bottom:14px">
+		<summary style="cursor:pointer;font-size:16px;font-weight:500;color:#cbd5e1">💬 Slogan đồng hồ 2.13 (cá nhân hóa)</summary>
+		<div class="card" style="margin-top:10px">
+			<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Nhập 2 dòng chữ hiển thị dưới đồng hồ (firmware đồng hồ 2.13). Tối đa <b>26 ký tự/dòng</b> (kể cả dấu cách):</div>
+			<div style="margin:8px 0">
+				<input type="text" id="slogan1" maxlength="26" placeholder="Dòng 1 (VD: Chúc bạn ngày mới an lành)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt);box-sizing:border-box">
+				<div class="muted" style="text-align:right;font-size:12px"><span id="slogan1-count">0</span>/26</div>
+			</div>
+			<div style="margin:8px 0">
+				<input type="text" id="slogan2" maxlength="26" placeholder="Dòng 2 (VD: Vạn sự như ý)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--txt);box-sizing:border-box">
+				<div class="muted" style="text-align:right;font-size:12px"><span id="slogan2-count">0</span>/26</div>
+			</div>
+			<button id="slogan-button" class="b-ok" disabled style="margin-top:8px">💬 Gửi slogan</button>
+			<div class="muted" style="margin-top:8px">Chỉ áp dụng cho <b>đồng hồ 2.13</b> (DLG-CLOCK-*). Lưu vĩnh viễn vào thiết bị (bền qua tắt nguồn).</div>
+		</div>
+	</details>
+
 	<div class="grid2">
 		<button id="calibration-button" class="b-ghost" disabled>🎯 Hiệu chỉnh</button>
 		<button id="upfirm-button" class="b-ghost" disabled>⬆️ Nâng cấp</button>
@@ -260,6 +277,7 @@
 			document.getElementById('cast-button').disabled = false;
 			document.getElementById('backclock-button').disabled = false;
 			document.getElementById('casttime-button').disabled = false;
+			document.getElementById('slogan-button').disabled = false;
 			document.getElementById('connect-button').textContent = '⛔ Ngắt kết nối';
 			document.getElementById('connect-button').className = 'b-ghost';
 			document.getElementById('device_name').textContent = device.name + (is213 ? '  (màn 2.13")' : '  (màn 4.2")');
@@ -469,6 +487,7 @@
 		document.getElementById('cast-button').disabled = true;
 		document.getElementById('backclock-button').disabled = true;
 		document.getElementById('casttime-button').disabled = true;
+		document.getElementById('slogan-button').disabled = true;
 		document.getElementById('connect-button').textContent = '🔗 Kết nối thiết bị';
 		document.getElementById('connect-button').className = 'b-pri';
 		setStatus('Đã ngắt kết nối', '');
@@ -538,6 +557,26 @@
 		}catch(e){ log('❌ Lỗi lập quẻ theo giờ: '+(e.message||e)); setStatus('Lỗi lập quẻ theo giờ','err'); }
 	}
 
+	// ===== SLOGAN dong ho 2.13 (0x97) =====
+	async function onSendSlogan(){
+		if(!longValue){ setStatus('Chưa kết nối thiết bị','warn'); return; }
+		if(deviceType === '42'){ setStatus('⚠️ Slogan chỉ dành cho đồng hồ 2.13','warn'); return; }
+		var s1=document.getElementById('slogan1').value;
+		var s2=document.getElementById('slogan2').value;
+		try{
+			var enc=new TextEncoder();
+			var b1=enc.encode(s1), p1=new Uint8Array(2+b1.length);
+			p1[0]=0x97; p1[1]=0; p1.set(b1,2);
+			await longValue.writeValue(p1);
+			await sleep(500);
+			var b2=enc.encode(s2), p2=new Uint8Array(2+b2.length);
+			p2[0]=0x97; p2[1]=1; p2.set(b2,2);
+			await longValue.writeValue(p2);
+			log('✅ Gửi slogan: "'+s1+'" / "'+s2+'"');
+			setStatus('✅ Đã gửi 2 slogan (lưu vĩnh viễn vào đồng hồ)','ok');
+		}catch(e){ log('❌ Lỗi gửi slogan: '+(e.message||e)); setStatus('Lỗi gửi slogan','err'); }
+	}
+
 	async function onCastManual(){
 		if(!longValue){ setStatus('Chưa kết nối thiết bị','warn'); return; }
 		var yaoBits=0, dongBits=0, h;
@@ -588,6 +627,9 @@
 	document.getElementById('cast-button').addEventListener('click', onCastManual);
 	document.getElementById('backclock-button').addEventListener('click', onBackToClock);
 	document.getElementById('casttime-button').addEventListener('click', onCastByTime);
+	document.getElementById('slogan-button').addEventListener('click', onSendSlogan);
+	document.getElementById('slogan1').addEventListener('input', function(){ document.getElementById('slogan1-count').textContent = this.value.length; });
+	document.getElementById('slogan2').addEventListener('input', function(){ document.getElementById('slogan2-count').textContent = this.value.length; });
 
 	if(!navigator.bluetooth){
 		setStatus('Trình duyệt không hỗ trợ Web Bluetooth — dùng Chrome hoặc Edge', 'err');
